@@ -22,12 +22,12 @@ StringType u_tolower(const StringType& unicode);
 // Like Python's ",".join(iterable) this function joins iterable to a string.
 template<class I>
 std::string join(const std::string& connector, const I& iterable) {
-	std::ostringstream os;
-	for (auto it = iterable.begin(); it < iterable.end(); ++it)
-	{
-		os << (it != iterable.begin() ? connector : "") << *it;
-	}
-	return os.str();
+    std::ostringstream os;
+    for (auto it = iterable.begin(); it < iterable.end(); ++it)
+    {
+        os << (it != iterable.begin() ? connector : "") << *it;
+    }
+    return os.str();
 }
 
 std::vector<std::string> split_string(const std::string& input, const char separator=' ');

@@ -27,7 +27,7 @@ int main() {
 
         std::vector<document_id> document_ids = ii.search(keywords);
         std::cout << "Results are: [" << StringUtil::join(", ", document_ids) << "]"
-        		  << std::endl;
+                  << std::endl;
 
     }
     return 0;
