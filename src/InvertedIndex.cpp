@@ -79,13 +79,13 @@ void InvertedIndex::parse_ICD_HTML_file(const string& filename)
         		}
         	}
 
-        	// Fine the end of the word.
+        	// Find the end of the word.
         	size_t start_of_word = pos;
         	for (; pos < line.size() && isalnum(line[pos], LOCALE); ++pos);
 
         	// Convert back to utf8 for compact storage.
         	wstring wword = line.substr(start_of_word, pos - start_of_word);
-        	string word = StringUtil::utf16to8(wword);
+        	string word = StringUtil::utf16to8(StringUtil::u_tolower(wword));
 
         	// Add the word to the index.
         	if (!ignore(word))
@@ -122,7 +122,7 @@ vector<document_id> InvertedIndex::search(const vector<string>& keywords) const
     // OR search
     for (const string& keyword: keywords)
     {
-    	auto it = index_.find(keyword);
+    	auto it = index_.find(StringUtil::u_tolower(keyword));
     	if (it != index_.cend())
     	{
     		std::copy(it->second.begin(), it->second.end(), std::back_inserter(result));

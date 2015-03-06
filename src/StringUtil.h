@@ -10,9 +10,14 @@ namespace StringUtil
 
 bool startswith(const std::string& this_, const std::string& firstpart);
 
+// Converts utf8 to utf32.
 std::wstring utf8to16(const std::string& utf8);
 
+// Converts utf32 to utf8.
 std::string utf16to8(const std::wstring& utf16);
+
+template<class StringType>
+StringType u_tolower(const StringType& unicode);
 
 // Like Python's ",".join(iterable) this function joins iterable to a string.
 template<class I>
