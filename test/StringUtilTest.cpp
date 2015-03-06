@@ -23,15 +23,15 @@ TEST(StringUtilTest, startswith)
     EXPECT_FALSE(startswith("abcd", "abcde"));
 }
 
-TEST(StringUtilTest, utf8to16)
+TEST(StringUtilTest, utf8to32)
 {
-	std::wstring result = StringUtil::utf8to16("Ä, ö, ü und ß.");
+	std::wstring result = StringUtil::utf8to32("Ä, ö, ü und ß.");
 	EXPECT_EQ(L"Ä, ö, ü und ß.", result);
 }
 
-TEST(StringUtilTest, utf16to8)
+TEST(StringUtilTest, utf32to8)
 {
-	std::string result = StringUtil::utf16to8(L"Ä, ö, ü und ß.");
+	std::string result = StringUtil::utf32to8(L"Ä, ö, ü und ß.");
 	EXPECT_EQ("Ä, ö, ü und ß.", result);
 }
 

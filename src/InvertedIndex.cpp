@@ -56,7 +56,7 @@ void InvertedIndex::parse_ICD_HTML_file(const string& filename)
     while (getline(ifs, rawline))
     {
     	// Convert to utf16 for robust isalnum().
-    	wstring line = StringUtil::utf8to16(rawline);
+    	wstring line = StringUtil::utf8to32(rawline);
         size_t pos = 0;
         bool inside_tag = false;
         while (pos < line.size())
@@ -85,7 +85,7 @@ void InvertedIndex::parse_ICD_HTML_file(const string& filename)
 
         	// Convert back to utf8 for compact storage.
         	wstring wword = line.substr(start_of_word, pos - start_of_word);
-        	string word = StringUtil::utf16to8(StringUtil::u_tolower(wword));
+        	string word = StringUtil::utf32to8(StringUtil::u_tolower(wword));
 
         	// Add the word to the index.
         	if (!ignore(word))
