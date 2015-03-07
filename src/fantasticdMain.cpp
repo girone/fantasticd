@@ -25,10 +25,9 @@ int main() {
         std::getline(std::cin, command);
         std::vector<std::string> keywords = StringUtil::split_string(command);
 
-        std::vector<document_id> document_ids = ii.search(keywords);
-        std::cout << "Results are: [" << StringUtil::join(", ", document_ids) << "]"
-                  << std::endl;
-
+        std::vector<InvertedIndex::Entry> matches = ii.search(keywords);
+        std::vector<std::string> results = ii.format_search_result(matches);
+        std::cout << "Results are: [" << StringUtil::join(",", results) << "]" << std::endl;
     }
     return 0;
 

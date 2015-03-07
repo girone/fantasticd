@@ -8,6 +8,7 @@
 
 #include <cassert>
 #include <fstream>
+#include <regex>
 #include <string>
 #include <vector>
 
@@ -49,7 +50,9 @@ void InvertedIndex::create_from_ICD_HTML(const string& directory)
 
 void InvertedIndex::parse_ICD_HTML_file(const string& filename)
 {
-    document_id document_index = documents_.size();
+    DocumentID document_index = documents_.size();
+    ICDcode icd_code = "";
+    ICDcodeIndex code_index = -1;
     std::ifstream ifs(filename);
     assert(ifs.is_open());
     string rawline;
@@ -78,6 +81,34 @@ void InvertedIndex::parse_ICD_HTML_file(const string& filename)
                     break;
                 }
             }
+            // TODO(Jonas): Write unit tests to rule out enclosed spaces in the index.
+            // According to fantasticdMain, " " is still indexed.
+
+            // Workaround: Extraction of the ICD code reference.
+            size_t pos2 = pos;
+            for (; pos2 < line.size() && line[pos2] != '<'; ++pos2);
+            if (pos2 < line.size() && pos2 > pos && line[pos2] == '<')
+            {
+                std::regex re("[A-Z][0-9]+\\.([0-9]*|-)");
+                std::string candidate = StringUtil::utf32to8(line.substr(pos, pos2 - pos));
+                if (std::regex_match(candidate, re))
+                {
+                    icd_code = candidate;
+                    auto it = code_to_code_index_.find(icd_code);
+                    if (it == code_to_code_index_.end())
+                    {
+                        code_index = icd_codes_.size();
+                        icd_codes_.push_back(icd_code);
+                        code_to_code_index_[icd_code] = code_index;
+                    }
+                    else
+                    {
+                        code_index = it->second;
+                    }
+                    index_word(icd_code, document_index, code_index);
+                    pos = pos2;
+                }
+            }
 
             // Find the end of the word.
             size_t start_of_word = pos;
@@ -90,7 +121,7 @@ void InvertedIndex::parse_ICD_HTML_file(const string& filename)
             // Add the word to the index.
             if (!ignore(word))
             {
-                index_word(word, document_index);
+                index_word(word, document_index, code_index);
             }
 
 
@@ -100,9 +131,9 @@ void InvertedIndex::parse_ICD_HTML_file(const string& filename)
     documents_.push_back(filename);
 }
 
-void InvertedIndex::index_word(const string& word, document_id document_index)
+void InvertedIndex::index_word(const string& word, DocumentID document_index, ICDcodeIndex code_index)
 {
-    index_[word].push_back(document_index);  // TODO(jonas): Avoid duplicates here.
+    index_[word].emplace_back(document_index, code_index);  // TODO(jonas): Avoid duplicates here.
 }
 
 bool InvertedIndex::ignore(const string& word)
@@ -115,10 +146,10 @@ bool InvertedIndex::ignore(const string& word)
     return false;
 }
 
-vector<document_id> InvertedIndex::search(const vector<string>& keywords) const
+vector<InvertedIndex::Entry> InvertedIndex::search(const vector<string>& keywords) const
 {
 
-    vector<document_id> result;
+    vector<Entry> result;
     // OR search
     for (const string& keyword: keywords)
     {
@@ -132,3 +163,15 @@ vector<document_id> InvertedIndex::search(const vector<string>& keywords) const
     return result;
 }
 
+std::vector<std::string> InvertedIndex::format_search_result(
+        const std::vector<Entry>& result) const
+{
+    std::vector<std::string> formatted;
+    for (const auto& entry: result)
+    {
+        const DocumentID& document_index = entry.first;
+        const ICDcode& icd_code = icd_codes_[entry.second];
+        formatted.push_back(documents_[document_index] + "#" + icd_code);
+    }
+    return formatted;
+}
