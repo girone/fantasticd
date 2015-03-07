@@ -13,6 +13,7 @@ INCLUDE_DIRS = -I$(GMOCK_DIR)/include -I$(GTEST_DIR)/include -I../src
 .PRECIOUS: %.o
 
 all:
+	$(MAKE) lib
 	$(MAKE) compile
 	$(MAKE) test
 	$(MAKE) checkstyle
@@ -27,16 +28,14 @@ checkstyle:
 
 clean:
 	rm -f *.o
+	rm -f *.a
 	rm -f $(MAIN_BINARIES)
 	rm -f $(TEST_BINARIES)
 	rm -f *.class
 	rm -f *Test.TMP.*
 	rm -f core
 
-%Main: %Main.cpp $(OBJECTS)
-	$(CXX) -o $@ $^ $(BOOST_STUFF)
-
-%Test: ../test/%Test.cpp $(OBJECTS)
+lib:
 	g++ -I${GTEST_DIR}/include -I${GTEST_DIR} -I${GMOCK_DIR}/include \
       -I${GMOCK_DIR} -c ${GTEST_DIR}/src/gtest_main.cc
 	ar -rv libgtest_main.a gtest_main.o
@@ -45,6 +44,12 @@ clean:
 	g++ -I${GTEST_DIR}/include -I${GTEST_DIR} -I${GMOCK_DIR}/include \
       -I${GMOCK_DIR} -c ${GMOCK_DIR}/src/gmock-all.cc
 	ar -rv libgmock.a gtest-all.o gmock-all.o
+
+
+%Main: %Main.cpp $(OBJECTS)
+	$(CXX) -o $@ $^ $(BOOST_STUFF)
+
+%Test: ../test/%Test.cpp $(OBJECTS)
 	$(CXX) $(INCLUDE_DIRS) -o $@ $^ libgmock.a libgtest_main.a -lpthread $(BOOST_STUFF)
 
 %.o: %.cpp $(HEADER)
