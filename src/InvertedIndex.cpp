@@ -36,9 +36,14 @@ void InvertedIndex::create_from_ICD_HTML(const string& directory)
     vector<string> filenames;
     for (directory_iterator it = directory_iterator(p); it != directory_iterator(); ++it)
     {
-        filenames.push_back(it->path().string());
+        if (not StringUtil::startswith(it->path().filename().string(), ".")
+            and StringUtil::endswith(it->path().string(), ".html"))
+        {
+           filenames.push_back(it->path().string());
+        }
     }
-    for (string s: filenames)
+    std::cout << "Creating ICD index from " << filenames.size() << " file(s)." << std::endl;
+    for (string s: filenames)  // DEBUG
         std::cout << s << std::endl;
 
     for (const string& file: filenames)

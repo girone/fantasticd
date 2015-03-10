@@ -10,6 +10,8 @@ namespace StringUtil
 
 bool startswith(const std::string& this_, const std::string& firstpart);
 
+bool endswith(const std::string& this_, const std::string& lastpart);
+
 // Converts utf8 to utf32.
 std::wstring utf8to32(const std::string& utf8);
 

@@ -15,6 +15,11 @@ bool startswith(const std::string& this_, const std::string& firstpart)
     return std::equal(firstpart.begin(), firstpart.end(), this_.begin());
 }
 
+bool endswith(const std::string& this_, const std::string& lastpart)
+{
+    return std::equal(lastpart.rbegin(), lastpart.rend(), this_.rbegin());
+}
+
 std::wstring utf8to32(const std::string& utf8)
 {
     return utf_to_utf<wchar_t>(utf8.c_str(), utf8.c_str() + utf8.size());

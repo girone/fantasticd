@@ -12,6 +12,7 @@
 using ::testing::ElementsAre;
 
 using StringUtil::startswith;
+using StringUtil::endswith;
 
 TEST(StringUtilTest, startswith)
 {
@@ -21,6 +22,16 @@ TEST(StringUtilTest, startswith)
     EXPECT_FALSE(startswith("abcd", "efgh"));
     EXPECT_FALSE(startswith("abcd", "abce"));
     EXPECT_FALSE(startswith("abcd", "abcde"));
+}
+
+TEST(StringUtilTest, endswith)
+{
+    EXPECT_TRUE(endswith("abcd", "bcd"));
+    EXPECT_TRUE(endswith("abcd", ""));
+    EXPECT_FALSE(endswith("abcd", "BCD"));
+    EXPECT_FALSE(endswith("abcd", "efgh"));
+    EXPECT_FALSE(endswith("abcd", "ebcd"));
+    EXPECT_FALSE(endswith("abcd", "cde"));
 }
 
 TEST(StringUtilTest, utf8to32)
