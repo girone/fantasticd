@@ -23,7 +23,7 @@ int main() {
         std::cout << "Enter search phrase:" << std::endl;
         std::cout << "> " << std::flush;
         std::getline(std::cin, command);
-        std::vector<std::string> keywords = StringUtil::split_string(command);
+        std::vector<std::string> keywords = StringUtil::split_string(command, ' ');
 
         std::vector<InvertedIndex::Entry> matches = ii.search(keywords);
         std::vector<std::string> results = ii.format_search_result(matches);

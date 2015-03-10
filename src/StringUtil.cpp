@@ -30,6 +30,12 @@ std::string utf32to8(const std::wstring& utf32)
     return boost::locale::conv::utf_to_utf<char>(utf32.c_str(), utf32.c_str() + utf32.size());
 }
 
+std::string tolower(const std::string& mixed)
+{
+    std::string lower;
+    std::transform(mixed.begin(), mixed.end(), std::back_inserter(lower), ::tolower);
+    return lower;
+}
 template<>
 std::wstring u_tolower(const std::wstring& unicode)
 {

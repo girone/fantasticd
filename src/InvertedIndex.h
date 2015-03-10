@@ -1,6 +1,7 @@
 #ifndef INVERTEDINDEX_H_
 #define INVERTEDINDEX_H_
 
+#include <gtest/gtest_prod.h>
 #include <locale>
 #include <unordered_map>
 #include <utility>
@@ -31,6 +32,7 @@ public:
     // Returns true, if the word or token should not be indexed.
     bool ignore(const std::string& word);
 
+    std::vector<Entry> search(const std::string& keyword) const;
     std::vector<Entry> search(const std::vector<std::string>& keywords) const;
     std::vector<std::string> format_search_result(const std::vector<Entry>& result) const;
 
@@ -42,6 +44,8 @@ private:
     std::unordered_map<ICDcode, ICDcodeIndex> code_to_code_index_;
 
     static const std::locale LOCALE;
+
+    FRIEND_TEST(InvertedIndexTest, parse_ICD_from_HTML);
 };
 
 

@@ -37,7 +37,7 @@ void InvertedIndex::create_from_ICD_HTML(const string& directory)
     for (directory_iterator it = directory_iterator(p); it != directory_iterator(); ++it)
     {
         if (not StringUtil::startswith(it->path().filename().string(), ".")
-            and StringUtil::endswith(it->path().string(), ".html"))
+            and StringUtil::endswith(it->path().string(), ".htm"))
         {
            filenames.push_back(it->path().string());
         }
@@ -55,6 +55,8 @@ void InvertedIndex::create_from_ICD_HTML(const string& directory)
 
 void InvertedIndex::parse_ICD_HTML_file(const string& filename)
 {
+    std::regex re("[A-Z][0-9]+\\.[0-9]*-*");
+    bool inside_tag = false;
     DocumentID document_index = documents_.size();
     ICDcode icd_code = "";
     ICDcodeIndex code_index = -1;
@@ -63,74 +65,69 @@ void InvertedIndex::parse_ICD_HTML_file(const string& filename)
     string rawline;
     while (getline(ifs, rawline))
     {
-        // Convert to utf16 for robust isalnum().
+        // Convert to utf32 for robust isalnum().
         wstring line = StringUtil::utf8to32(rawline);
         size_t pos = 0;
-        bool inside_tag = false;
         while (pos < line.size())
         {
-            // Find the start of a token.
-            for (; pos < line.size() && line[pos] == ' '; ++pos);
-
-            if (line[pos] == '<' || inside_tag)
+            if (inside_tag && line[pos] == '>')
+            {
+                inside_tag = false;
+                ++pos;
+            }
+            else if (inside_tag || line[pos] == '<')
             {
                 inside_tag = true;
-                // Skip till end of tag or end of line.
                 for (; pos < line.size() && line[pos] != '>'; ++pos);
-                if (line[pos] == '>')
-                {
-                    inside_tag = false;
-                }
-                else
-                {
-                    break;
-                }
             }
-            // TODO(Jonas): Write unit tests to rule out enclosed spaces in the index.
-            // According to fantasticdMain, " " is still indexed.
-
-            // Workaround: Extraction of the ICD code reference.
-            size_t pos2 = pos;
-            for (; pos2 < line.size() && line[pos2] != '<'; ++pos2);
-            if (pos2 < line.size() && pos2 > pos && line[pos2] == '<')
+            else if (isspace(line[pos]))
             {
-                std::regex re("[A-Z][0-9]+\\.([0-9]*|-)");
-                std::string candidate = StringUtil::utf32to8(line.substr(pos, pos2 - pos));
-                if (std::regex_match(candidate, re))
+                // Skip until next non-space.
+                for (; pos < line.size() && isspace(line[pos]); ++pos);
+            }
+            else if (isalnum(line[pos], LOCALE))
+            {
+                // Check for ICD codes.
+                size_t pos2 = pos + 1;
+                for (; pos2 < line.size() && line[pos2] != '<'; ++pos2);
+                if (line[pos2] == '<' && pos2 > pos + 2 && pos2 <= pos + 7 && line[pos2] == '<')
                 {
-                    icd_code = candidate;
-                    auto it = code_to_code_index_.find(icd_code);
-                    if (it == code_to_code_index_.end())
+                    std::string candidate = StringUtil::utf32to8(line.substr(pos, pos2 - pos));
+                    if (std::regex_match(candidate, re))
                     {
-                        code_index = icd_codes_.size();
-                        icd_codes_.push_back(icd_code);
-                        code_to_code_index_[icd_code] = code_index;
+                        icd_code = StringUtil::tolower(candidate);
+                        auto it = code_to_code_index_.find(icd_code);
+                        if (it == code_to_code_index_.end())
+                        {
+                            code_index = icd_codes_.size();
+                            icd_codes_.push_back(icd_code);
+                            code_to_code_index_[icd_code] = code_index;
+                        }
+                        else
+                        {
+                            code_index = it->second;
+                        }
+                        index_word(icd_code, document_index, code_index);
+                        pos = pos2;
+                        continue;
                     }
-                    else
-                    {
-                        code_index = it->second;
-                    }
-                    index_word(icd_code, document_index, code_index);
-                    pos = pos2;
+                }
+
+                // Find end of word and index it.
+                size_t start_of_word = pos;
+                for (; pos < line.size() && isalnum(line[pos], LOCALE); ++pos);
+                wstring wword = line.substr(start_of_word, pos - start_of_word);
+                string word = StringUtil::utf32to8(StringUtil::u_tolower(wword));
+                if (!ignore(word))
+                {
+                    index_word(word, document_index, code_index);
                 }
             }
-
-            // Find the end of the word.
-            size_t start_of_word = pos;
-            for (; pos < line.size() && isalnum(line[pos], LOCALE); ++pos);
-
-            // Convert back to utf8 for compact storage.
-            wstring wword = line.substr(start_of_word, pos - start_of_word);
-            string word = StringUtil::utf32to8(StringUtil::u_tolower(wword));
-
-            // Add the word to the index.
-            if (!ignore(word))
+            else
             {
-                index_word(word, document_index, code_index);
+                // non-alphanumeric character
+                ++pos;
             }
-
-
-            ++pos;
         }
     }
     documents_.push_back(filename);
@@ -149,6 +146,12 @@ bool InvertedIndex::ignore(const string& word)
         return true;
     }
     return false;
+}
+
+std::vector<InvertedIndex::Entry> InvertedIndex::search(const std::string& keyword) const
+{
+    std::vector<std::string> tmp = {keyword};
+    return search(tmp);
 }
 
 vector<InvertedIndex::Entry> InvertedIndex::search(const vector<string>& keywords) const
