@@ -31,6 +31,7 @@ const std::locale InvertedIndex::LOCALE = std::locale("de_DE.UTF8");
 
 void InvertedIndex::create_from_ICD_HTML(const string& directory)
 {
+    sum_of_document_lengths_ = 0;
     boost::filesystem::path p(directory);
     assert(exists(p) && is_directory(p));
     vector<string> filenames;
@@ -46,11 +47,15 @@ void InvertedIndex::create_from_ICD_HTML(const string& directory)
     for (string s: filenames)  // DEBUG
         std::cout << s << std::endl;
 
+    // Parse the index from HTML files.
     for (const string& file: filenames)
     {
         std::cout << "Parsing " << file << "..." << std::endl;
         parse_ICD_HTML_file(file);
     }
+
+    // Compute the weights (BM25).
+    compute_ranking_scores();
 }
 
 void InvertedIndex::parse_ICD_HTML_file(const string& filename)
@@ -135,7 +140,18 @@ void InvertedIndex::parse_ICD_HTML_file(const string& filename)
 
 void InvertedIndex::index_word(const string& word, DocumentID document_index, ICDcodeIndex code_index)
 {
-    index_[word].emplace_back(document_index, code_index);  // TODO(jonas): Avoid duplicates here.
+    auto it = index_.find(word);
+    if (it == index_.end() || it->second.back().code_index != code_index)
+    {
+        index_[word].emplace_back(document_index, code_index, 1);
+    }
+    else
+    {
+        index_[word].back().score++;  // Increase term frequency count.
+    }
+    // Keep track of the "document length".
+    number_of_words_[code_index] += word.size();
+    sum_of_document_lengths_ += word.size();
 }
 
 bool InvertedIndex::ignore(const string& word)
@@ -177,9 +193,31 @@ std::vector<std::string> InvertedIndex::format_search_result(
     std::vector<std::string> formatted;
     for (const auto& entry: result)
     {
-        const DocumentID& document_index = entry.first;
-        const ICDcode& icd_code = icd_codes_[entry.second];
-        formatted.push_back(documents_[document_index] + "#" + icd_code);
+        const DocumentID& document_index = entry.document_id;
+        const ICDcode& icd_code = icd_codes_[entry.code_index];
+        std::string s = "(" + documents_[document_index] + "#" + icd_code + ")," +
+                "score=" + convert<std::string>(entry.score);
+        formatted.push_back(s);
     }
     return formatted;
+}
+
+void InvertedIndex::compute_ranking_scores()
+{
+    const float k = 1.75;
+    const float b = 0.75;
+    float average_document_length = 1.f * sum_of_document_lengths_ / icd_codes_.size();
+
+    for (auto it = index_.begin(); it != index_.end(); ++it)
+    {
+        for (Entry& e: it->second)
+        {
+            ICDcodeIndex code_index = e.code_index;
+            size_t document_length = number_of_words_[code_index];
+            size_t tf = e.score;
+            e.score = tf * (k + 1) /
+                    (k * (1 - b + b * document_length / average_document_length) + tf);
+        }
+    }
+
 }

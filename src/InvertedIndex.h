@@ -24,7 +24,22 @@ public:
     typedef unsigned int DocumentID;
     typedef std::string ICDcode;
     typedef unsigned int ICDcodeIndex;
-    typedef std::pair<DocumentID, ICDcodeIndex> Entry;
+    struct Entry
+    {
+        Entry()
+            : document_id(-1), code_index(-1), score(-1) { }
+        Entry(DocumentID d, ICDcodeIndex c, float s)
+            : document_id(d), code_index(c), score(s) { }
+        bool operator==(const Entry& other) const
+        {
+            return document_id == other.document_id &&
+                   code_index == other.code_index &&
+                   score == other.score;
+        }
+        DocumentID document_id;
+        ICDcodeIndex code_index;
+        float score;
+    };
 
     void create_from_ICD_HTML(const std::string& directory);
     void parse_ICD_HTML_file(const std::string& filename);
@@ -43,7 +58,14 @@ private:
     std::vector<ICDcode> icd_codes_;
     std::unordered_map<ICDcode, ICDcodeIndex> code_to_code_index_;
 
+    // tf.idf related stuff
+    std::unordered_map<ICDcodeIndex, size_t> number_of_words_;
+    size_t sum_of_document_lengths_;
+
     static const std::locale LOCALE;
+
+    // Computes the bm25 weights of each entry.
+    void compute_ranking_scores();
 
     FRIEND_TEST(InvertedIndexTest, parse_ICD_from_HTML);
 };

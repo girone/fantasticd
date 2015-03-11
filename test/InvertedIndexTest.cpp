@@ -7,6 +7,25 @@ using ::testing::Contains;
 using ::testing::ElementsAre;
 using ::testing::Not;
 
+typedef InvertedIndex::Entry Entry;
+
+const std::string test_file = "parser_input.TMP.htm";
+
+
+void create_test_icd_html()
+{
+    std::ofstream tmp_file(test_file);
+    tmp_file <<
+        " </dd></dl></div><div class='Category1'><h4>       <a name='S80' id='S80' class='code'>S80.-</a>      \n"
+        " <h5><a name='S82.2' id='S82.2' class='code'>S82.2-</a> \n"
+        "      \n"
+        "       <span class='label'>Fraktur des Tibiaschaftes</span></h5></div><div class='Category3'><h6>      <a name='S82.21' id='S82.21' class='code'>S82.21</a> \n"
+        "\n"
+        "               <span class='label'>Mit Fraktur der Fibula (jeder Teil) (Test: ohne Anästhesie) (einfach doppelt doppelt)</span></h6></div><div class='Category3'>\n";
+    tmp_file.close();
+}
+
+
 TEST(InvertedIndexTest, ICD_code_regex)
 {
     std::regex re("[A-Z][0-9]+\\.([0-9]*|-)");
@@ -23,29 +42,29 @@ TEST(InvertedIndexTest, ICD_code_regex)
 
 TEST(InvertedIndexTest, parse_ICD_from_HTML)
 {
-    std::string filename = "parser_input.html.TMP";
-    std::ofstream tmp_file(filename);
-    tmp_file <<
-        " </dd></dl></div><div class='Category1'><h4>       <a name='S80' id='S80' class='code'>S80.-</a>      \n"
-        " <h5><a name='S82.2' id='S82.2' class='code'>S82.2-</a> \n"
-        "      \n"
-        "     	<span class='label'>Fraktur des Tibiaschaftes</span></h5></div><div class='Category3'><h6>      <a name='S82.21' id='S82.21' class='code'>S82.21</a> \n"
-        "\n"
-        "				<span class='label'>Mit Fraktur der Fibula (jeder Teil) (Test: ohne Anästhesie)</span></h6></div><div class='Category3'>\n";
-    tmp_file.close();
-
     InvertedIndex ii;
-    ii.parse_ICD_HTML_file(filename);
+    ii.parse_ICD_HTML_file(test_file);
 
     EXPECT_THAT(ii.icd_codes_, ElementsAre("s80.-", "s82.2-", "s82.21"));
-    EXPECT_THAT(ii.documents_, ElementsAre("parser_input.html.TMP"));
-    EXPECT_THAT(ii.index_["fibula"], ElementsAre(std::make_pair(0u, 2u)));
-    EXPECT_EQ(ii.search(" "), std::vector<InvertedIndex::Entry>());
-    EXPECT_EQ(ii.search(""), std::vector<InvertedIndex::Entry>());
-    EXPECT_EQ(ii.search("\t"), std::vector<InvertedIndex::Entry>());
-    EXPECT_THAT(ii.search("fraktur"), ElementsAre(std::make_pair(0u, 1u), std::make_pair(0u, 2u)));
+    EXPECT_THAT(ii.documents_, ElementsAre("parser_input.TMP.htm"));
+    EXPECT_THAT(ii.index_["fibula"], ElementsAre(Entry(0, 2, 1)));
+    EXPECT_EQ(ii.search(" "), std::vector<Entry>());
+    EXPECT_EQ(ii.search(""), std::vector<Entry>());
+    EXPECT_EQ(ii.search("\t"), std::vector<Entry>());
+    EXPECT_THAT(ii.search("fraktur"), ElementsAre(Entry(0, 1, 1), Entry(0, 2, 1)));
 
     // Correct handling of unicode/utf8.
-    EXPECT_THAT(ii.search("anästhesie"), ElementsAre(std::make_pair(0u, 2u)));
+    EXPECT_THAT(ii.search("anästhesie"), ElementsAre(Entry(0, 2, 1)));
+}
+
+TEST(InvertedIndexTest, tf_idf_score)
+{
+    InvertedIndex ii;
+    ii.parse_ICD_HTML_file(test_file);
+    // Correct counting of the term frequency.
+    EXPECT_THAT(ii.search("doppelt"), ElementsAre(Entry(0, 2, 2)));
+    EXPECT_THAT(ii.search("einfach"), ElementsAre(Entry(0, 2, 1)));
+
+    // TODO(Jonas): Write a test for tf.idf formula with bm25.
 }
 
