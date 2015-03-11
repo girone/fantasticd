@@ -29,6 +29,8 @@ using boost::filesystem::directory_iterator;
 // has to be parameterized.
 const std::locale InvertedIndex::LOCALE = std::locale("de_DE.UTF8");
 
+const std::string InvertedIndex::DIMDI_ICD_URL_prefix =
+        "http://www.dimdi.de/static/de/klassi/icd-10-gm/kodesuche/onlinefassungen/htmlgm2015/";
 
 void InvertedIndex::create_from_ICD_HTML(const string& directory)
 {
@@ -59,14 +61,14 @@ void InvertedIndex::create_from_ICD_HTML(const string& directory)
     compute_ranking_scores();
 }
 
-void InvertedIndex::parse_ICD_HTML_file(const string& filename)
+void InvertedIndex::parse_ICD_HTML_file(const string& filepath)
 {
     std::regex re("[A-Z][0-9]+\\.[0-9]*-*");
     bool inside_tag = false;
     DocumentID document_index = documents_.size();
     ICDcode icd_code = "";
     ICDcodeIndex code_index = -1;
-    std::ifstream ifs(filename);
+    std::ifstream ifs(filepath);
     assert(ifs.is_open());
     string rawline;
     while (getline(ifs, rawline))
@@ -136,7 +138,8 @@ void InvertedIndex::parse_ICD_HTML_file(const string& filename)
             }
         }
     }
-    documents_.push_back(filename);
+    boost::filesystem::path p(filepath);
+    documents_.push_back(p.filename().string());
 }
 
 void InvertedIndex::index_word(const string& word, DocumentID document_index, ICDcodeIndex code_index)
@@ -298,17 +301,31 @@ std::vector<InvertedIndex::Entry> InvertedIndex::andish_union(
     return result;
 }
 
+std::string InvertedIndex::format_id(const ICDcode& icd_code) const
+{
+    ICDcode id = StringUtil::toupper(icd_code);
+    if (id.back() == '-')
+    {
+        id = id.substr(0, id.size() - 1);
+    }
+    if (id.back() == '.')
+    {
+        id = id.substr(0, id.size() - 1);
+    }
+    return id;
+}
+
 std::vector<std::string> InvertedIndex::format_search_result(
         const std::vector<Entry>& result) const
 {
     std::vector<std::string> formatted;
     for (const auto& entry: result)
     {
-        const DocumentID& document_index = entry.document_id;
-        const ICDcode& icd_code = icd_codes_[entry.code_index];
-        std::string s = "(" + documents_[document_index] + "#" + icd_code + ")," +
-                "score=" + convert<std::string>(entry.score);
-        formatted.push_back(s);
+        const std::string& document = documents_[entry.document_id];
+        std::string id = format_id(icd_codes_[entry.code_index]);
+        std::string url = DIMDI_ICD_URL_prefix + document + "#" + id;
+        std::string score = convert<std::string>(entry.score);
+        formatted.push_back("(" + url + ")," + "score=" + score);
     }
     return formatted;
 }

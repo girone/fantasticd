@@ -36,6 +36,14 @@ std::string tolower(const std::string& mixed)
     std::transform(mixed.begin(), mixed.end(), std::back_inserter(lower), ::tolower);
     return lower;
 }
+
+std::string toupper(const std::string& mixed)
+{
+    std::string upper;
+    std::transform(mixed.begin(), mixed.end(), std::back_inserter(upper), ::toupper);
+    return upper;
+}
+
 template<>
 std::wstring u_tolower(const std::wstring& unicode)
 {

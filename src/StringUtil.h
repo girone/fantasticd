@@ -31,6 +31,9 @@ std::string utf32to8(const std::wstring& utf32);
 // Converts a string to lowercase.
 std::string tolower(const std::string& mixed);
 
+// Converts a string to uppercase.
+std::string toupper(const std::string& mixed);
+
 // Converts a unicode string to lowercase, taking into account non-ASCII chars.
 template<class StringType>
 StringType u_tolower(const StringType& unicode);

@@ -42,7 +42,7 @@ public:
     };
 
     void create_from_ICD_HTML(const std::string& directory);
-    void parse_ICD_HTML_file(const std::string& filename);
+    void parse_ICD_HTML_file(const std::string& filepath);
     void index_word(const std::string& word, DocumentID document_index, ICDcodeIndex code_index);
     // Returns true, if the word or token should not be indexed.
     bool ignore(const std::string& word);
@@ -52,6 +52,7 @@ public:
     static std::vector<Entry> intersection(const std::vector<Entry>& list1, const std::vector<Entry>& list2);
     static std::vector<Entry> andish_union(const std::vector<Entry>& list1, const std::vector<Entry>& list2);
     std::vector<std::string> format_search_result(const std::vector<Entry>& result) const;
+    std::string format_id(const ICDcode& icd_code) const;
 
 private:
     std::unordered_map<std::string, std::vector<Entry>> index_;
@@ -65,6 +66,7 @@ private:
     size_t sum_of_document_lengths_;
 
     static const std::locale LOCALE;
+    static const std::string DIMDI_ICD_URL_prefix;
 
     // Computes the bm25 weights of each entry.
     void compute_ranking_scores();
