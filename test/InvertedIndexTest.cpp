@@ -68,3 +68,21 @@ TEST(InvertedIndexTest, tf_idf_score)
     // TODO(Jonas): Write a test for tf.idf formula with bm25.
 }
 
+TEST(InvertedIndexTest, intersection)
+{
+    std::vector<Entry> a = {Entry(0, 0, 2.),                  Entry(0, 2, 2.)};
+    std::vector<Entry> b = {Entry(0, 0, 2.), Entry(0, 1, 2.), Entry(0, 2, 1.5)};
+
+    std::vector<Entry> r = InvertedIndex::intersection(a, b);
+    EXPECT_THAT(r, ElementsAre(Entry(0, 0, 4.), Entry(0, 2, 3.5)));
+}
+
+TEST(InvertedIndexTest, andish_union)
+{
+    std::vector<Entry> a = {Entry(0, 0, 2.),                  Entry(0, 2, 2.)};
+    std::vector<Entry> b = {Entry(0, 0, 2.), Entry(0, 1, 2.), Entry(0, 2, 1.5)};
+
+    std::vector<Entry> r = InvertedIndex::andish_union(a, b);
+    EXPECT_THAT(r, ElementsAre(Entry(0, 0, 4.), Entry(0, 1, 2.), Entry(0, 2, 3.5)));
+}
+

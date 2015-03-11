@@ -6,6 +6,7 @@
  */
 #include <boost/filesystem.hpp>
 
+#include <algorithm>
 #include <cassert>
 #include <fstream>
 #include <regex>
@@ -164,23 +165,133 @@ bool InvertedIndex::ignore(const string& word)
     return false;
 }
 
-std::vector<InvertedIndex::Entry> InvertedIndex::search(const std::string& keyword) const
+vector<InvertedIndex::Entry> InvertedIndex::search(
+        const std::string& keyword,
+        const size_t* top_k)
+const
 {
     std::vector<std::string> tmp = {keyword};
-    return search(tmp);
+    return search(tmp, top_k);
 }
 
-vector<InvertedIndex::Entry> InvertedIndex::search(const vector<string>& keywords) const
+vector<InvertedIndex::Entry> InvertedIndex::search(
+        const vector<string>& keywords,
+        const size_t* top_k)
+const
 {
-
-    vector<Entry> result;
-    // OR search
+    if (keywords.size() == 0)
+    {
+        return vector<Entry>();
+    }
+    vector<const vector<Entry>*> inverted_lists;
+    inverted_lists.reserve(keywords.size());
     for (const string& keyword: keywords)
     {
         auto it = index_.find(StringUtil::u_tolower(keyword));
         if (it != index_.cend())
         {
-            std::copy(it->second.begin(), it->second.end(), std::back_inserter(result));
+            inverted_lists.push_back(&(it->second));
+        }
+    }
+    if (inverted_lists.size() == 0)
+    {
+        return vector<Entry>();
+    }
+
+    // Sort by length to speed intersection up.
+    auto comp = [](const vector<Entry>* a, const vector<Entry>* b) {
+        return a->size() < b->size();
+    };
+    std::sort(inverted_lists.begin(), inverted_lists.end(), comp);
+
+    // Intersect or unite.
+    vector<Entry> result = *(inverted_lists[0]);
+    for (size_t i = 1; i < inverted_lists.size(); ++i)
+    {
+        result = intersection(result, *inverted_lists[i]);
+    }
+
+    // Sort by score.
+    auto compare_score = [](const Entry& a, const Entry& b) {
+        return a.score > b.score;
+    };
+    if (top_k and *top_k < result.size())
+    {
+        size_t k = *top_k;
+        std::partial_sort(result.begin(), result.begin() + k, result.end(), compare_score);
+    }
+    else
+    {
+        std::sort(result.begin(), result.end(), compare_score);
+    }
+    return result;
+}
+
+std::vector<InvertedIndex::Entry> InvertedIndex::intersection(
+        const std::vector<Entry>& list1,
+        const std::vector<Entry>& list2)
+{
+    std::vector<Entry> result;
+    result.reserve(std::min(list1.size(), list2.size()));
+    std::vector<Entry>::const_iterator it1, it2;
+    for (it1 = list1.cbegin(), it2 = list2.cbegin();
+         it1 != list1.cend() && it2 != list2.cend();
+         ++it1, ++it2)
+    {
+        for (; it1 != list1.cend() && it1->code_index < it2->code_index; ++it1);
+
+        for (; it2 != list2.cend() && it2->code_index < it1->code_index; ++it2);
+
+        if (it1 != list1.cend() && it2 != list2.cend() &&
+            it1->code_index == it2->code_index)
+        {
+            result.emplace_back(
+                    it1->document_id,
+                    it1->code_index,
+                    it1->score + it2->score
+            );
+        }
+    }
+    return result;
+}
+
+std::vector<InvertedIndex::Entry> InvertedIndex::andish_union(
+        const std::vector<Entry>& list1,
+        const std::vector<Entry>& list2)
+{
+    std::vector<Entry> result;
+    std::vector<Entry>::const_iterator it1, it2;
+    for (it1 = list1.cbegin(), it2 = list2.cbegin();
+         it1 != list1.cend() || it2 != list2.cend();)
+    {
+        for (;
+             it1 != list1.cend() &&
+             (it2 == list2.cend() || it1->code_index < it2->code_index);
+             ++it1)
+        {
+            result.emplace_back(
+                    it1->document_id,
+                    it1->code_index,
+                    it1->score);
+        }
+        for (;
+             it2 != list2.cend() &&
+             (it1 == list1.cend() || it2->code_index < it1->code_index);
+             ++it2)
+        {
+            result.emplace_back(
+                    it2->document_id,
+                    it2->code_index,
+                    it2->score);
+        }
+        for (; it1 != list1.cend() && it2 != list2.cend() &&
+               it1->code_index == it2->code_index;
+             ++it1, ++it2)
+        {
+            result.emplace_back(
+                    it1->document_id,
+                    it1->code_index,
+                    it1->score + it2->score);
         }
     }
 

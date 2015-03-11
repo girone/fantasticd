@@ -5,6 +5,16 @@
 #include <string>
 #include <sstream>
 
+template<class To, class From>
+To convert(const From& input)
+{
+    std::stringstream s;
+    s << input;
+    To output;
+    s >> output;
+    return output;
+}
+
 namespace StringUtil
 {
 

@@ -47,8 +47,10 @@ public:
     // Returns true, if the word or token should not be indexed.
     bool ignore(const std::string& word);
 
-    std::vector<Entry> search(const std::string& keyword) const;
-    std::vector<Entry> search(const std::vector<std::string>& keywords) const;
+    std::vector<Entry> search(const std::string& keyword, const size_t* top_k=NULL) const;
+    std::vector<Entry> search(const std::vector<std::string>& keywords, const size_t* top_k=NULL) const;
+    static std::vector<Entry> intersection(const std::vector<Entry>& list1, const std::vector<Entry>& list2);
+    static std::vector<Entry> andish_union(const std::vector<Entry>& list1, const std::vector<Entry>& list2);
     std::vector<std::string> format_search_result(const std::vector<Entry>& result) const;
 
 private:
