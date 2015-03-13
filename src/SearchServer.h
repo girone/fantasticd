@@ -15,6 +15,9 @@ public:
     { }
     void run();
 
+    static std::string format_header(const std::string& filename, const std::string& content);
+    static std::string decide_content_type(const std::string& filename);
+
 private:
     const unsigned int port_;
     boost::asio::io_service io_service_;

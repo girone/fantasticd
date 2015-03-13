@@ -62,17 +62,20 @@ std::string SearchServer::compute_HTTP_response(const std::string& request) cons
 {
     // Extract URL from "GET /<url> HTTP/1.1 ...".
     size_t end_of_URL = request.find(' ', 5);
-    std::string filename = "www/" + request.substr(5, end_of_URL - 5);
+    std::string filename = request.substr(5, end_of_URL - 5);
 
     std::string response;
-    std::ifstream ifs(filename);
-    if (!ifs.good())
+    std::ifstream ifs("www/" + filename);
+    std::cout << "Looking for file \"" << filename << "\"." << std::endl;
+    if (filename == "" || not ifs.good())
     {
         std::cerr << "Error: File \"" << filename << "\" not found." << std::endl;
         response = "Not found.";
     }
     else
     {
+        std::string content_type = decide_content_type(filename);
+
         // Read in the whole file.
         // More efficient than line by line reading according to SO:
         // http://stackoverflow.com/a/2602258/841567
@@ -82,6 +85,40 @@ std::string SearchServer::compute_HTTP_response(const std::string& request) cons
         ifs.seekg(0, std::ios::beg);
         ifs.read(&response[0], filesize);
     }
-    std::cout << "Response is: \"" << response << "\"" << std::endl;
-    return response;
+
+    std::string header = format_header(filename, response);
+    std::cout << "Response is: \"" << header + response << "\"" << std::endl;
+    return header + response;
+}
+
+std::string SearchServer::format_header(const std::string& filename, const std::string& content)
+{
+    std::string header;
+    header.append("HTTP/1.1 200 OK\r\n");
+    header.append("Content-type: " + decide_content_type(filename) + "\r\n");
+    header.append("Content-length: " + convert<std::string>(content.size()) + "\r\n");
+    header.append("\r\n");
+    return header;
+}
+
+std::string SearchServer::decide_content_type(const std::string& filename)
+{
+    std::string content_type;
+    if (StringUtil::endswith(filename, ".html") or StringUtil::endswith(filename, ".htm"))
+    {
+        content_type = "text/html";
+    }
+    else if (StringUtil::endswith(filename, ".css"))
+    {
+        content_type = "text/css";
+    }
+    else if (StringUtil::endswith(filename, ".js"))
+    {
+        content_type = "application/javascript";
+    }
+    else
+    {
+        content_type = "text/plain";
+    }
+    return content_type;
 }
