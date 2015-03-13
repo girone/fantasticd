@@ -11,13 +11,17 @@
 
 using boost::asio::ip::tcp;
 
+// Turns exception handling in the run loop off. Useful for debugging.
+// #define NO_EXCEPTIONS
 
 void SearchServer::run()
 {
     while (true)
     {
+#ifndef NO_EXCEPTIONS
         try
         {
+#endif
             std::cout << "Waiting for query at port " << port_ << "..." << std::endl;
             tcp::socket client(io_service_);
             acceptor_.accept(client);
@@ -44,12 +48,13 @@ void SearchServer::run()
             std::string response = compute_HTTP_response(request);
             boost::asio::write(client, boost::asio::buffer(response),
                     boost::asio::transfer_all(), write_error);
-
+#ifndef NO_EXCEPTIONS
         }
         catch (const std::exception& e)
         {
-            std::cerr << e.what() << std::endl;
+            std::cerr << "Exception thrown: " << e.what() << std::endl;
         }
+#endif
     }
 }
 
