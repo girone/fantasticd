@@ -322,8 +322,9 @@ std::string InvertedIndex::format_id(const ICDcode& icd_code) const
     return id;
 }
 
-std::vector<std::string> InvertedIndex::format_search_result(
-        const std::vector<Entry>& result) const
+std::vector<std::string>
+InvertedIndex::format_search_result(const std::vector<Entry>& result)
+const
 {
     std::vector<std::string> formatted;
     for (const auto& entry: result)
@@ -335,6 +336,23 @@ std::vector<std::string> InvertedIndex::format_search_result(
         formatted.push_back("(" + url + ")," + "score=" + score);
     }
     return formatted;
+}
+
+std::vector<std::string>
+InvertedIndex::format_search_result_title_and_URL_JSON(const std::vector<Entry>& results)
+const
+{
+    std::vector<std::string> titles_and_URLs;
+    titles_and_URLs.reserve(results.size());
+    for (const auto& entry: results)
+    {
+        const std::string& document = documents_[entry.document_id];
+        std::string id = format_id(icd_codes_[entry.code_index]);
+        std::string URL = DIMDI_ICD_URL_prefix + document + "#" + id;
+        std::string title = id + " [placeholder title]";
+        titles_and_URLs.emplace_back("{\"t\":\"" + title + "\",\"url\":\"" + URL + "\"}");
+    }
+    return titles_and_URLs;
 }
 
 void InvertedIndex::compute_ranking_scores()

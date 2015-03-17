@@ -31,18 +31,10 @@ $(document).ready(function() {
       var host = window.location.host
       var url = "http://" + host + "/?ac=" + input
       console.log("Requesting autocompletion from \"" + url + "\"")
-      // TODO(Jonas): Use AJAX instead of blocking $.get ($.ajaxJSON()).
+      // TODO(Jonas): Use AJAX instead of blocking $.get ($.ajaxJSON()), if that is different.
       $.get(url, function(data) {
         console.log("Received " + data)
         // Distinguish already typed and suggestion by highlight.
-        //var tmp = []
-        //$.each(data, function(index, value) {
-        //  value = "<strong>" + finished + "</strong>" + value
-        //  console.log(value)
-        //  tmp.push(value)
-        //})
-        //data = tmp
-
         response($.map(data, function(item) {
           return {label: "<strong>" + finished + "</strong>" + item,
                   value: finished + item}
@@ -52,7 +44,6 @@ $(document).ready(function() {
     minLength: 3
   })
   .data('ui-autocomplete')._renderItem = function( ul, item ) {
-    console.log("Custom renderer called.");
     return $( "<li></li>" )
       .data( "ui-autocomplete-item", item )
       .append( '<a>' + item.label + '</a>' )
@@ -61,9 +52,27 @@ $(document).ready(function() {
 })
 
 function search(query) {
-  var url = "http://" + window.location.host + "/q="
-  $.get(url, function(data) {
-    console.log("Query " + url + " got response from server: " + data)
+  var url = "http://" + window.location.host + "/?q=" + query
+  var result = $.getJSON(url, function(data) {
+    console.log("Query " + url + " got response from server: ")
+    console.log(data)
+    
+    data = $.map(data, function(entry) {
+      return "<div class=\"result_li\"><a href=\"" + entry.url + "\" target=\"_blank\">" + entry.t + "</a></div>";
+    }); 
+    var html = "";
+    $.each(data, function(index, value) {
+      html += value + "\n"
+    });
+    show_result(html);
   });
+  //result.fail(function(data, text_status, error) {
+  //  show_result("<strong>Error while querying the search server.</strong>")
+  //});
+}
+
+function show_result(text) {
+    $("#search_results").html(text);
+    $("#search_results").show();
 }
 

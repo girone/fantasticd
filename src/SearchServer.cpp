@@ -7,6 +7,9 @@
 
 #include "./SearchServer.h"
 #include <fstream>
+#include <string>
+#include <vector>
+#include <utility>
 #include "./InvertedIndex.h"
 #include "./StringUtil.h"
 
@@ -84,9 +87,21 @@ std::string SearchServer::compute_HTTP_response(const std::string& request) cons
         }
         else
         {
-            content = compute_autocomplete_response(URL);
+            content = compute_autocomplete_response(URL.substr(4));
         }
         header = format_response_header("js", content);
+    }
+    else if (StringUtil::startswith(URL, "?q="))
+    {
+        if (URL.size() == 3)
+        {
+            content = "[]";
+        }
+        else
+        {
+            content = compute_search_response(URL.substr(3));
+        }
+        header = format_response_header("json", content);
     }
     else
     {
@@ -98,36 +113,40 @@ std::string SearchServer::compute_HTTP_response(const std::string& request) cons
     return header + content;
 }
 
-std::string SearchServer::format_response_header(const std::string& filename, const std::string& content)
+std::string SearchServer::format_response_header(const std::string& content_type, const std::string& content)
 {
     std::string header;
     header.append("HTTP/1.1 200 OK\r\n");
-    header.append("Content-type: " + decide_content_type(filename) + "\r\n");
+    header.append("Content-type: " + decide_mime_type(content_type) + "\r\n");
     header.append("Content-length: " + convert<std::string>(content.size()) + "\r\n");
     header.append("\r\n");
     return header;
 }
 
-std::string SearchServer::decide_content_type(const std::string& filename)
+std::string SearchServer::decide_mime_type(const std::string& content_type)
 {
-    std::string content_type;
-    if (StringUtil::endswith(filename, "html") or StringUtil::endswith(filename, "htm"))
+    std::string mime_type;
+    if (content_type == "json")
     {
-        content_type = "text/html";
+        mime_type = "application/json";
     }
-    else if (StringUtil::endswith(filename, "css"))
+    else if (StringUtil::endswith(content_type, "html") or StringUtil::endswith(content_type, "htm"))
     {
-        content_type = "text/css";
+        mime_type = "text/html";
     }
-    else if (StringUtil::endswith(filename, "js"))
+    else if (StringUtil::endswith(content_type, "css"))
     {
-        content_type = "application/javascript";
+        mime_type = "text/css";
+    }
+    else if (StringUtil::endswith(content_type, "js"))
+    {
+        mime_type = "application/javascript";
     }
     else
     {
-        content_type = "text/plain";
+        mime_type = "text/plain";
     }
-    return content_type;
+    return mime_type;
 }
 
 std::string SearchServer::compute_file_response(const std::string& filename) const
@@ -142,7 +161,7 @@ std::string SearchServer::compute_file_response(const std::string& filename) con
     }
     else
     {
-        std::string content_type = decide_content_type(filename);
+        std::string content_type = decide_mime_type(filename);
 
         // Read in the whole file.
         // More efficient than line by line reading according to SO:
@@ -156,10 +175,9 @@ std::string SearchServer::compute_file_response(const std::string& filename) con
     return response;
 }
 
-std::string SearchServer::compute_autocomplete_response(const std::string& URL) const
+std::string SearchServer::compute_autocomplete_response(const std::string& input) const
 {
-    // Can assume that URL starts with "?ac=".
-    std::string keyword = StringUtil::tolower(URL.substr(4));
+    std::string keyword = StringUtil::tolower(input);
     std::vector<std::string> suggestions = ii_.suggest(keyword);
 
     std::string json;
@@ -172,5 +190,15 @@ std::string SearchServer::compute_autocomplete_response(const std::string& URL) 
         json = "[]";
     }
     // TODO(Jonas): Make this (and any other external request-based operation) work for UTF8.
+    return json;
+}
+
+std::string SearchServer::compute_search_response(const std::string& input) const
+{
+    std::vector<std::string> keywords = StringUtil::split_string(StringUtil::tolower(input), ' ');
+    std::vector<std::string> titles_and_URLs = ii_.format_search_result_title_and_URL_JSON(
+            ii_.search(keywords)
+    );
+    std::string json = "[" + StringUtil::join(",", titles_and_URLs) + "]";
     return json;
 }
