@@ -17,6 +17,20 @@ struct PairHash
     }
 };
 
+typedef std::pair<std::string, size_t> KW;
+
+// A lexicographical comparator.
+auto lexicographycally = [](const KW& a, const KW& b) {
+    return std::lexicographical_compare(a.first.begin(), a.first.end(),
+                                        b.first.begin(), b.first.end());
+};
+
+
+// A by-importance comparator.
+auto by_importance = [](const KW& a, const KW& b) {
+    return a.second > b.second;
+};
+
 
 class InvertedIndex
 {
@@ -49,6 +63,10 @@ public:
 
     std::vector<Entry> search(const std::string& keyword, const size_t* top_k=NULL) const;
     std::vector<Entry> search(const std::vector<std::string>& keywords, const size_t* top_k=NULL) const;
+
+    // Returns a list of suggestions for auto-completion. May be limited to the top k matches.
+    std::vector<std::string> suggest(const std::string& keyword_prefix, const unsigned int* top_k=NULL) const;
+
     static std::vector<Entry> intersection(const std::vector<Entry>& list1, const std::vector<Entry>& list2);
     static std::vector<Entry> andish_union(const std::vector<Entry>& list1, const std::vector<Entry>& list2);
     std::vector<std::string> format_search_result(const std::vector<Entry>& result) const;
@@ -60,6 +78,8 @@ private:
     // Maps from document, code index to the actual ICD code, e.g. "S83.53".
     std::vector<ICDcode> icd_codes_;
     std::unordered_map<ICDcode, ICDcodeIndex> code_to_code_index_;
+    // A lexicographically sorted list of pairs (keyword, importance).
+    std::vector<std::pair<std::string, float>> keywords_;
 
     // tf.idf related stuff
     std::unordered_map<ICDcodeIndex, size_t> number_of_words_;
@@ -70,8 +90,11 @@ private:
 
     // Computes the bm25 weights of each entry.
     void compute_ranking_scores();
+    // Computes the keywords and their score.
+    void compute_keyword_importances();
 
     FRIEND_TEST(InvertedIndexTest, parse_ICD_from_HTML);
+    FRIEND_TEST(InvertedIndexTest, compute_keyword_importances);
 };
 
 

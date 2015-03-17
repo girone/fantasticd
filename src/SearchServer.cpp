@@ -7,12 +7,21 @@
 
 #include "./SearchServer.h"
 #include <fstream>
+#include "./InvertedIndex.h"
 #include "./StringUtil.h"
 
 using boost::asio::ip::tcp;
 
 // Turns exception handling in the run loop off. Useful for debugging.
 // #define NO_EXCEPTIONS
+
+SearchServer::SearchServer(const unsigned int port) :
+    port_(port),
+    io_service_(),
+    acceptor_(io_service_, tcp::endpoint(tcp::v4(), port_))
+{
+    ii_.create_from_ICD_HTML("icd/html/");
+}
 
 void SearchServer::run()
 {
@@ -62,8 +71,67 @@ std::string SearchServer::compute_HTTP_response(const std::string& request) cons
 {
     // Extract URL from "GET /<url> HTTP/1.1 ...".
     size_t end_of_URL = request.find(' ', 5);
-    std::string filename = request.substr(5, end_of_URL - 5);
+    std::string URL = request.substr(5, end_of_URL - 5);
 
+    std::string content;
+    std::string header;
+
+    if (StringUtil::startswith(URL, "?ac="))
+    {
+        if (URL.size() < 4 + 3)
+        {
+            content = "[]";
+        }
+        else
+        {
+            content = compute_autocomplete_response(URL);
+        }
+        header = format_response_header("js", content);
+    }
+    else
+    {
+        content = compute_file_response(URL);
+        header = format_response_header(URL, content);
+    }
+
+    std::cout << "Response is: \"" << header + content << "\"" << std::endl;
+    return header + content;
+}
+
+std::string SearchServer::format_response_header(const std::string& filename, const std::string& content)
+{
+    std::string header;
+    header.append("HTTP/1.1 200 OK\r\n");
+    header.append("Content-type: " + decide_content_type(filename) + "\r\n");
+    header.append("Content-length: " + convert<std::string>(content.size()) + "\r\n");
+    header.append("\r\n");
+    return header;
+}
+
+std::string SearchServer::decide_content_type(const std::string& filename)
+{
+    std::string content_type;
+    if (StringUtil::endswith(filename, "html") or StringUtil::endswith(filename, "htm"))
+    {
+        content_type = "text/html";
+    }
+    else if (StringUtil::endswith(filename, "css"))
+    {
+        content_type = "text/css";
+    }
+    else if (StringUtil::endswith(filename, "js"))
+    {
+        content_type = "application/javascript";
+    }
+    else
+    {
+        content_type = "text/plain";
+    }
+    return content_type;
+}
+
+std::string SearchServer::compute_file_response(const std::string& filename) const
+{
     std::string response;
     std::ifstream ifs("www/" + filename);
     std::cout << "Looking for file \"" << filename << "\"." << std::endl;
@@ -85,40 +153,24 @@ std::string SearchServer::compute_HTTP_response(const std::string& request) cons
         ifs.seekg(0, std::ios::beg);
         ifs.read(&response[0], filesize);
     }
-
-    std::string header = format_header(filename, response);
-    std::cout << "Response is: \"" << header + response << "\"" << std::endl;
-    return header + response;
+    return response;
 }
 
-std::string SearchServer::format_header(const std::string& filename, const std::string& content)
+std::string SearchServer::compute_autocomplete_response(const std::string& URL) const
 {
-    std::string header;
-    header.append("HTTP/1.1 200 OK\r\n");
-    header.append("Content-type: " + decide_content_type(filename) + "\r\n");
-    header.append("Content-length: " + convert<std::string>(content.size()) + "\r\n");
-    header.append("\r\n");
-    return header;
-}
+    // Can assume that URL starts with "?ac=".
+    std::string keyword = StringUtil::tolower(URL.substr(4));
+    std::vector<std::string> suggestions = ii_.suggest(keyword);
 
-std::string SearchServer::decide_content_type(const std::string& filename)
-{
-    std::string content_type;
-    if (StringUtil::endswith(filename, ".html") or StringUtil::endswith(filename, ".htm"))
+    std::string json;
+    if (suggestions.size() > 0)
     {
-        content_type = "text/html";
-    }
-    else if (StringUtil::endswith(filename, ".css"))
-    {
-        content_type = "text/css";
-    }
-    else if (StringUtil::endswith(filename, ".js"))
-    {
-        content_type = "application/javascript";
+        json = "[\"" + StringUtil::join("\", \"", suggestions) + "\"]";
     }
     else
     {
-        content_type = "text/plain";
+        json = "[]";
     }
-    return content_type;
+    // TODO(Jonas): Make this (and any other external request-based operation) work for UTF8.
+    return json;
 }

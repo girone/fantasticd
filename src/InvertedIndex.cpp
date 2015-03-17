@@ -11,6 +11,7 @@
 #include <fstream>
 #include <regex>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "./InvertedIndex.h"
@@ -59,6 +60,8 @@ void InvertedIndex::create_from_ICD_HTML(const string& directory)
 
     // Compute the weights (BM25).
     compute_ranking_scores();
+
+    compute_keyword_importances();
 }
 
 void InvertedIndex::parse_ICD_HTML_file(const string& filepath)
@@ -349,3 +352,49 @@ void InvertedIndex::compute_ranking_scores()
     }
 
 }
+
+void InvertedIndex::compute_keyword_importances()
+{
+    // TODO(Jonas): In the keyword list, the casing should be correct upper- or
+    // lowercase, not unified lowercase as in the index. However, the search
+    // should be case-insensitive.
+    // Collect all keywords and scores.
+    keywords_.clear();
+    keywords_.reserve(index_.size());
+    for (auto it = index_.cbegin(); it != index_.cend(); ++it)
+    {
+        keywords_.emplace_back(it->first, 1.0);
+    }
+    // Sort.
+    std::sort(keywords_.begin(), keywords_.end(), lexicographycally);
+}
+
+std::vector<std::string> InvertedIndex::suggest(const std::string& keyword_prefix, const unsigned int* top_k) const
+{
+    assert(keyword_prefix.size() > 0);
+    // Extract matches.
+    std::pair<std::string, float> key(keyword_prefix, 1.0);
+    auto lower = std::lower_bound(keywords_.begin(), keywords_.end(), key, lexicographycally);
+    key.first.back() += 1;  // A hack to get upper bound to work.
+    auto upper = std::upper_bound(keywords_.begin(), keywords_.end(), key, lexicographycally);
+    std::vector<std::pair<std::string, float>> keywords(lower, upper);
+    // Sort by importance.
+    if (top_k && *top_k < keywords.size())
+    {
+        std::partial_sort(keywords.begin(), keywords.begin() + *top_k, keywords.end(), by_importance);
+        keywords.resize(*top_k);
+    }
+    else
+    {
+        std::sort(keywords.begin(), keywords.end(), by_importance);
+    }
+    // Return only keywords.
+    auto selector = [](const std::pair<std::string, float>& k_and_s) {
+        return k_and_s.first;
+    };
+    std::vector<std::string> suggestions;
+    suggestions.reserve(keywords.size());
+    std::transform(keywords.begin(), keywords.end(), std::back_inserter(suggestions), selector);
+    return suggestions;
+}
+

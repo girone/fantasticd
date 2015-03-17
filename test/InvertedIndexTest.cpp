@@ -2,9 +2,11 @@
 #include <gmock/gmock.h>
 #include <regex>
 #include <fstream>
+#include "./StringUtil.h"
 
 using ::testing::Contains;
 using ::testing::ElementsAre;
+using ::testing::Eq;
 using ::testing::Not;
 
 typedef InvertedIndex::Entry Entry;
@@ -25,8 +27,17 @@ void create_test_icd_html()
     tmp_file.close();
 }
 
+class InvertedIndexTest : public ::testing::Test
+{
+public:
+    InvertedIndexTest()
+    {
+        create_test_icd_html();
+    }
+};
 
-TEST(InvertedIndexTest, ICD_code_regex)
+
+TEST_F(InvertedIndexTest, ICD_code_regex)
 {
     std::regex re("[A-Z][0-9]+\\.([0-9]*|-)");
     std::string subject = "S83.50";
@@ -40,7 +51,7 @@ TEST(InvertedIndexTest, ICD_code_regex)
     EXPECT_FALSE(std::regex_match(subject3, re));
 }
 
-TEST(InvertedIndexTest, parse_ICD_from_HTML)
+TEST_F(InvertedIndexTest, parse_ICD_from_HTML)
 {
     InvertedIndex ii;
     ii.parse_ICD_HTML_file(test_file);
@@ -57,7 +68,7 @@ TEST(InvertedIndexTest, parse_ICD_from_HTML)
     EXPECT_THAT(ii.search("anästhesie"), ElementsAre(Entry(0, 2, 1)));
 }
 
-TEST(InvertedIndexTest, tf_idf_score)
+TEST_F(InvertedIndexTest, tf_idf_score)
 {
     InvertedIndex ii;
     ii.parse_ICD_HTML_file(test_file);
@@ -68,7 +79,39 @@ TEST(InvertedIndexTest, tf_idf_score)
     // TODO(Jonas): Write a test for tf.idf formula with bm25.
 }
 
-TEST(InvertedIndexTest, intersection)
+TEST_F(InvertedIndexTest, compute_keyword_importances)
+{
+    InvertedIndex ii;
+    ii.parse_ICD_HTML_file(test_file);
+    ii.compute_keyword_importances();
+
+    typedef std::pair<std::string, float> T;
+    std::vector<T> expected = {
+            {"s80.-", 1.0}, {"s82.2-", 1.0}, {"s82.21", 1.0},
+            {"des", 1.0}, {"tibiaschaftes", 1.0}, {"mit", 1.0},
+            {"fraktur", 1.0}, {"der", 1.0}, {"fibula", 1.0},
+            {"jeder", 1.0}, {"teil", 1.0}, {"test", 1.0},
+            {"ohne", 1.0}, {"anästhesie", 1.0}, {"einfach", 1.0},
+            {"doppelt", 1.0}
+    };
+    std::sort(expected.begin(), expected.end(), lexicographycally);
+    EXPECT_THAT(ii.keywords_, Eq(expected));
+
+    EXPECT_THAT(ii.suggest("anästhesie"), Contains("anästhesie"));
+    std::vector<std::string> suggestions = ii.suggest("f");
+    std::cout << StringUtil::join(", ", suggestions) << std::endl;
+    EXPECT_EQ(2, suggestions.size());
+    EXPECT_THAT(suggestions, Contains("fraktur"));
+    EXPECT_THAT(suggestions, Contains("fibula"));
+    EXPECT_NE(ii.suggest("f"), ii.suggest("F"));
+
+    suggestions = ii.suggest("tibia");
+    std::cout << StringUtil::join(", ", suggestions) << std::endl;
+    suggestions = ii.suggest("de");
+    std::cout << StringUtil::join(", ", suggestions) << std::endl;
+}
+
+TEST_F(InvertedIndexTest, intersection)
 {
     std::vector<Entry> a = {Entry(0, 0, 2.),                  Entry(0, 2, 2.)};
     std::vector<Entry> b = {Entry(0, 0, 2.), Entry(0, 1, 2.), Entry(0, 2, 1.5)};
@@ -77,7 +120,7 @@ TEST(InvertedIndexTest, intersection)
     EXPECT_THAT(r, ElementsAre(Entry(0, 0, 4.), Entry(0, 2, 3.5)));
 }
 
-TEST(InvertedIndexTest, andish_union)
+TEST_F(InvertedIndexTest, andish_union)
 {
     std::vector<Entry> a = {Entry(0, 0, 2.),                  Entry(0, 2, 2.)};
     std::vector<Entry> b = {Entry(0, 0, 2.), Entry(0, 1, 2.), Entry(0, 2, 1.5)};
