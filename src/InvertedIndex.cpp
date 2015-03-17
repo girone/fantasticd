@@ -67,6 +67,7 @@ void InvertedIndex::create_from_ICD_HTML(const string& directory)
 void InvertedIndex::parse_ICD_HTML_file(const string& filepath)
 {
     std::regex re("[A-Z][0-9]+\\.[0-9]*-*");
+    bool indexing_active = false;
     bool inside_tag = false;
     DocumentID document_index = documents_.size();
     ICDcode icd_code = "";
@@ -106,6 +107,9 @@ void InvertedIndex::parse_ICD_HTML_file(const string& filepath)
                     std::string candidate = StringUtil::utf32to8(line.substr(pos, pos2 - pos));
                     if (std::regex_match(candidate, re))
                     {
+                        // The first valid ICD code enables the indexing:
+                        indexing_active = true;
+
                         icd_code = StringUtil::tolower(candidate);
                         auto it = code_to_code_index_.find(icd_code);
                         if (it == code_to_code_index_.end())
@@ -129,7 +133,7 @@ void InvertedIndex::parse_ICD_HTML_file(const string& filepath)
                 for (; pos < line.size() && isalnum(line[pos], LOCALE); ++pos);
                 wstring wword = line.substr(start_of_word, pos - start_of_word);
                 string word = StringUtil::utf32to8(StringUtil::u_tolower(wword));
-                if (!ignore(word))
+                if (!ignore(word) and indexing_active)
                 {
                     index_word(word, document_index, code_index);
                 }

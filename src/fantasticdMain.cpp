@@ -17,7 +17,7 @@ int main() {
     string command;
 
     InvertedIndex ii;
-    ii.create_from_ICD_HTML("../icd/html/");
+    ii.create_from_ICD_HTML("icd/html/");
     while (true)
     {
         std::cout << "Enter search phrase:" << std::endl;
