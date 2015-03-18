@@ -83,6 +83,10 @@ private:
     std::unordered_map<ICDcode, ICDcodeIndex> code_to_code_index_;
     // A lexicographically sorted list of pairs (keyword, importance).
     std::vector<std::pair<std::string, float>> keywords_;
+    // A index from q-grams of keywords to keywords. Used for error-tolerant prefix search to suggest input.
+    typedef std::string QGram;
+    typedef unsigned int QGramEntry;
+    std::unordered_map<QGram, std::vector<QGramEntry>> keyword_index_;
 
     // tf.idf related stuff
     std::unordered_map<ICDcodeIndex, size_t> number_of_words_;
@@ -90,14 +94,18 @@ private:
 
     static const std::locale LOCALE;
     static const std::string DIMDI_ICD_URL_prefix;
+    static const unsigned int Q_GRAM_LENGTH;
 
     // Computes the bm25 weights of each entry.
     void compute_ranking_scores();
     // Computes the keywords and their score.
     void compute_keyword_importances();
+    // Computes the index over keywords.
+    void compute_keyword_index(unsigned int q);
 
     FRIEND_TEST(InvertedIndexTest, parse_ICD_from_HTML);
     FRIEND_TEST(InvertedIndexTest, compute_keyword_importances);
+    FRIEND_TEST(InvertedIndexTest, compute_keyword_index);
 };
 
 

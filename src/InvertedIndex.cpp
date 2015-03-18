@@ -33,6 +33,8 @@ const std::locale InvertedIndex::LOCALE = std::locale("de_DE.UTF8");
 const std::string InvertedIndex::DIMDI_ICD_URL_prefix =
         "http://www.dimdi.de/static/de/klassi/icd-10-gm/kodesuche/onlinefassungen/htmlgm2015/";
 
+const unsigned int InvertedIndex::Q_GRAM_LENGTH = 3;
+
 void InvertedIndex::create_from_ICD_HTML(const string& directory)
 {
     sum_of_document_lengths_ = 0;
@@ -62,6 +64,8 @@ void InvertedIndex::create_from_ICD_HTML(const string& directory)
     compute_ranking_scores();
 
     compute_keyword_importances();
+
+    compute_keyword_index(Q_GRAM_LENGTH);
 }
 
 void InvertedIndex::parse_ICD_HTML_file(const string& filepath)
@@ -420,3 +424,19 @@ std::vector<std::string> InvertedIndex::suggest(const std::string& keyword_prefi
     return suggestions;
 }
 
+void InvertedIndex::compute_keyword_index(unsigned int q)
+{
+    assert(q > 0);
+    keyword_index_.clear();
+    for (size_t index = 0; index < keywords_.size(); ++index)
+    {
+        const std::pair<std::string, float> element = keywords_[index];
+        std::string prefixed_keyword = "";
+        for (size_t i = 0; i < q - 1; ++i) { prefixed_keyword += "$"; }
+        prefixed_keyword += element.first;
+        for (size_t i = 0; i < prefixed_keyword.size() - (q - 1); ++i)
+        {
+            keyword_index_[prefixed_keyword.substr(i, q)].push_back(index);
+        }
+    }
+}

@@ -129,3 +129,22 @@ TEST_F(InvertedIndexTest, andish_union)
     EXPECT_THAT(r, ElementsAre(Entry(0, 0, 4.), Entry(0, 1, 2.), Entry(0, 2, 3.5)));
 }
 
+TEST_F(InvertedIndexTest, compute_keyword_index)
+{
+    InvertedIndex ii;
+
+    ii.parse_ICD_HTML_file(test_file);
+    ii.compute_keyword_importances();
+    unsigned int q = 3;
+    ii.compute_keyword_index(3);
+
+    int index_of_fibula = 5;
+    ASSERT_EQ("fibula", ii.keywords_[index_of_fibula].first);
+
+    EXPECT_THAT(ii.keyword_index_["$$f"], Contains(index_of_fibula));
+    EXPECT_THAT(ii.keyword_index_["$fi"], Contains(index_of_fibula));
+    EXPECT_THAT(ii.keyword_index_["fib"], Contains(index_of_fibula));
+    EXPECT_THAT(ii.keyword_index_["ibu"], Contains(index_of_fibula));
+    EXPECT_THAT(ii.keyword_index_["bul"], Contains(index_of_fibula));
+    EXPECT_THAT(ii.keyword_index_["ula"], Contains(index_of_fibula));
+}
