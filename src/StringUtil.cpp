@@ -1,5 +1,6 @@
 #include "./StringUtil.h"
 #include <boost/locale/encoding_utf.hpp>
+#include <cassert>
 #include <locale>
 //#include <codecvt>  <-- not yet present in GCC
 #include <string>
@@ -74,5 +75,26 @@ std::vector<std::string> split_string(const std::string& input, const char separ
     return result;
 }
 
+std::string add_prefix(const std::string& input, const char c, const unsigned int n)
+{
+    std::string s;
+    for (size_t i = 0; i < n; ++i)
+    {
+        s += c;
+    }
+    s += input;
+    return s;
 }
 
+std::vector<std::string> generate_qgrams(const std::string word, int q)
+{
+    assert(q > 0);
+    std::vector<std::string> qgrams;
+    for (size_t i = 0; i < word.size() - (q - 1); ++i)
+    {
+        qgrams.push_back(word.substr(i, q));
+    }
+    return qgrams;
+}
+
+}  // namespace StringUtil

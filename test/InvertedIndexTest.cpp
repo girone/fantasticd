@@ -2,12 +2,14 @@
 #include <gmock/gmock.h>
 #include <regex>
 #include <fstream>
+#include <utility>
 #include "./StringUtil.h"
 
 using ::testing::Contains;
 using ::testing::ElementsAre;
 using ::testing::Eq;
 using ::testing::Not;
+using std::make_pair;
 
 typedef InvertedIndex::Entry Entry;
 
@@ -96,6 +98,14 @@ TEST_F(InvertedIndexTest, compute_keyword_importances)
     };
     std::sort(expected.begin(), expected.end(), lexicographycally);
     EXPECT_THAT(ii.keywords_, Eq(expected));
+}
+
+TEST_F(InvertedIndexTest, suggest)
+{
+    InvertedIndex ii;
+    ii.parse_ICD_HTML_file(test_file);
+    ii.compute_keyword_importances();
+    ii.compute_keyword_index(InvertedIndex::Q_GRAM_LENGTH);
 
     EXPECT_THAT(ii.suggest("anästhesie"), Contains("anästhesie"));
     std::vector<std::string> suggestions = ii.suggest("f");
@@ -147,4 +157,23 @@ TEST_F(InvertedIndexTest, compute_keyword_index)
     EXPECT_THAT(ii.keyword_index_["ibu"], Contains(index_of_fibula));
     EXPECT_THAT(ii.keyword_index_["bul"], Contains(index_of_fibula));
     EXPECT_THAT(ii.keyword_index_["ula"], Contains(index_of_fibula));
+}
+
+TEST_F(InvertedIndexTest, union_with_counter)
+{
+    const std::vector<size_t> l1 = {1, 2, 3, 4};
+    const std::vector<size_t> l2 = {1, 3, 5};
+    const std::vector<size_t> l3 = {3, 4, 5, 6};
+    const std::vector<size_t> l4 = {7};
+    std::vector<const std::vector<size_t>* > input = {&l1, &l2, &l3, &l4};
+    std::vector<std::pair<size_t, size_t>> u = InvertedIndex::union_with_counter(input);
+    EXPECT_THAT(u, ElementsAre(
+            make_pair(1, 2),
+            make_pair(2, 1),
+            make_pair(3, 3),
+            make_pair(4, 2),
+            make_pair(5, 2),
+            make_pair(6, 1),
+            make_pair(7, 1)
+    ));
 }

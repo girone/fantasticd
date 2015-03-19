@@ -4,17 +4,20 @@
  *  Created on: 02.03.2015
  *      Author: jonas
  */
+#include "./InvertedIndex.h"
+
 #include <boost/filesystem.hpp>
 
 #include <algorithm>
 #include <cassert>
 #include <fstream>
+#include <queue>
 #include <regex>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "./InvertedIndex.h"
+#include "./EditDistance.h"
 #include "./StringUtil.h"
 
 using std::string;
@@ -34,6 +37,7 @@ const std::string InvertedIndex::DIMDI_ICD_URL_prefix =
         "http://www.dimdi.de/static/de/klassi/icd-10-gm/kodesuche/onlinefassungen/htmlgm2015/";
 
 const unsigned int InvertedIndex::Q_GRAM_LENGTH = 3;
+const char InvertedIndex::Q_GRAM_PADDING_CHAR = '$';
 
 void InvertedIndex::create_from_ICD_HTML(const string& directory)
 {
@@ -395,15 +399,47 @@ void InvertedIndex::compute_keyword_importances()
     std::sort(keywords_.begin(), keywords_.end(), lexicographycally);
 }
 
-std::vector<std::string> InvertedIndex::suggest(const std::string& keyword_prefix, const unsigned int* top_k) const
+std::vector<std::string> InvertedIndex::suggest(const std::string& keyword_prefix, const unsigned int* delta_, const unsigned int* top_k) const
 {
     assert(keyword_prefix.size() > 0);
-    // Extract matches.
-    std::pair<std::string, float> key(keyword_prefix, 1.0);
-    auto lower = std::lower_bound(keywords_.begin(), keywords_.end(), key, lexicographycally);
-    key.first.back() += 1;  // A hack to get upper bound to work.
-    auto upper = std::upper_bound(keywords_.begin(), keywords_.end(), key, lexicographycally);
-    std::vector<std::pair<std::string, float>> keywords(lower, upper);
+    unsigned int delta = (delta_ ? *delta_ : (keyword_prefix.size() / 4));
+    std::string padded = StringUtil::add_prefix(keyword_prefix, Q_GRAM_PADDING_CHAR, Q_GRAM_LENGTH);
+    std::vector<std::string> qgrams = StringUtil::generate_qgrams(padded, Q_GRAM_LENGTH);
+
+    // Compute the union with counts of every element.
+    std::vector<const std::vector<QGramEntry>* > lists;
+    for (const std::string qgram: qgrams)
+    {
+        auto it = keyword_index_.find(qgram);
+        if (it != keyword_index_.end())
+        {
+            const std::vector<QGramEntry>* ptr = &(it->second);
+            lists.push_back(ptr);
+        }
+    }
+    std::vector<std::pair<QGramEntry, size_t>> union_of_lists = union_with_counter(lists);
+
+    // Filter by edit distance.
+    std::vector<std::pair<std::string, float>> keywords;
+    // Improvement: If the count is below |prefix| - q * delta,
+    // the edit distance will be more than delta.
+    size_t threshold = keyword_prefix.size() - Q_GRAM_LENGTH * delta;
+    for (size_t i = 0; i < union_of_lists.size(); ++i)
+    {
+        size_t count = union_of_lists[i].second;
+        if (count < threshold)
+        {
+            continue;
+        }
+        QGramEntry keyword_index = union_of_lists[i].first;
+        const std::string& keyword = keywords_[keyword_index].first;
+        const float importance = keywords_[keyword_index].second;
+        if (EditDistance::ped(keyword_prefix, keyword) <= delta)
+        {
+            keywords.emplace_back(keyword, importance);
+        }
+    }
+
     // Sort by importance.
     if (top_k && *top_k < keywords.size())
     {
@@ -414,6 +450,7 @@ std::vector<std::string> InvertedIndex::suggest(const std::string& keyword_prefi
     {
         std::sort(keywords.begin(), keywords.end(), by_importance);
     }
+
     // Return only keywords.
     auto selector = [](const std::pair<std::string, float>& k_and_s) {
         return k_and_s.first;
@@ -424,6 +461,66 @@ std::vector<std::string> InvertedIndex::suggest(const std::string& keyword_prefi
     return suggestions;
 }
 
+typedef std::pair<size_t, size_t> ListAndValue;
+
+struct CompareByValue
+{
+    bool operator()(const ListAndValue& a, const ListAndValue& b) const
+    {
+        return a.second > b.second;
+    }
+};
+
+typedef std::priority_queue<
+    ListAndValue,
+    std::vector<ListAndValue>,
+    CompareByValue
+> PriorityQueue;
+
+std::vector<std::pair<size_t, size_t>> InvertedIndex::union_with_counter(
+    const std::vector<const std::vector<size_t>* >& lists)
+{
+    if (lists.size() == 0)
+    {
+        return std::vector<std::pair<size_t, size_t>>();
+    }
+    // Initialize the priority queue and position vector.
+    std::vector<size_t> position(lists.size(), 0);
+    PriorityQueue pq;
+    for (size_t i = 0; i < lists.size(); ++i)
+    {
+        assert((*lists[i]).size() > 0);
+        pq.push(std::make_pair(i, (*lists[i])[0]));
+    }
+
+    // Compute the union.
+    std::vector<std::pair<size_t, size_t>> u;
+    while (not pq.empty())
+    {
+        ListAndValue top = pq.top();
+        pq.pop();
+        size_t list_index = top.first;
+        size_t value = top.second;
+        if (u.size() && u.back().first == value)
+        {
+            u.back().second++;
+        }
+        else
+        {
+            u.emplace_back(value, 1);
+        }
+        position[list_index]++;
+        if (position[list_index] < (*lists[list_index]).size())
+        {
+            pq.push(std::make_pair(
+                list_index,
+                (*lists[list_index])[position[list_index]]
+            ));
+        }
+    }
+    return u;
+}
+
 void InvertedIndex::compute_keyword_index(unsigned int q)
 {
     assert(q > 0);
@@ -432,7 +529,7 @@ void InvertedIndex::compute_keyword_index(unsigned int q)
     {
         const std::pair<std::string, float> element = keywords_[index];
         std::string prefixed_keyword = "";
-        for (size_t i = 0; i < q - 1; ++i) { prefixed_keyword += "$"; }
+        for (size_t i = 0; i < q - 1; ++i) { prefixed_keyword += Q_GRAM_PADDING_CHAR; }
         prefixed_keyword += element.first;
         for (size_t i = 0; i < prefixed_keyword.size() - (q - 1); ++i)
         {

@@ -178,7 +178,8 @@ std::string SearchServer::compute_file_response(const std::string& filename) con
 std::string SearchServer::compute_autocomplete_response(const std::string& input) const
 {
     std::string keyword = StringUtil::tolower(input);
-    std::vector<std::string> suggestions = ii_.suggest(keyword);
+    unsigned int delta = keyword.size() / 4;
+    std::vector<std::string> suggestions = ii_.suggest(keyword, &delta);
 
     std::string json;
     if (suggestions.size() > 0)

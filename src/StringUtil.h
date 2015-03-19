@@ -51,6 +51,12 @@ std::string join(const std::string& connector, const I& iterable) {
 
 std::vector<std::string> split_string(const std::string& input, const char separator=' ');
 
+// Returns "cccccinput", where n is the number of c's.
+std::string add_prefix(const std::string& input, const char c, const unsigned int n);
+
+// Returns the q-grams of the word.
+std::vector<std::string> generate_qgrams(const std::string word, int q);
+
 }  // namespace StringUtil
 
 

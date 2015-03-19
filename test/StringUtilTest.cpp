@@ -68,7 +68,7 @@ TEST(StringUtilTest, wstring_isalnum)
 
 TEST(StringUtilTest, split_string)
 {
-    std::vector<std::string> result = StringUtil::split_string("Hi you there!");
+    std::vector<std::string> result = StringUtil::split_string("Hi you there!", ' ');
     EXPECT_THAT(result, ElementsAre("Hi", "you", "there!"));
 }
 
@@ -105,4 +105,16 @@ TEST(StringUtilTest, u_tolower)
 {
     std::string str = "ÄÖÜß";
     EXPECT_EQ("äöüß", StringUtil::u_tolower(str));
+}
+
+TEST(StringUtilTest, add_prefix)
+{
+    EXPECT_EQ("cccWORD", StringUtil::add_prefix("WORD", 'c', 3));
+}
+
+TEST(StringUtilTest, generate_qgrams)
+{
+    unsigned int q = 3;
+    std::vector<std::string> qgrams = StringUtil::generate_qgrams("$$BILLY", q);
+    EXPECT_THAT(qgrams, ElementsAre("$$B", "$BI", "BIL", "ILL", "LLY"));
 }

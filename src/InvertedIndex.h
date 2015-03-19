@@ -64,11 +64,22 @@ public:
     std::vector<Entry> search(const std::string& keyword, const size_t* top_k=NULL) const;
     std::vector<Entry> search(const std::vector<std::string>& keywords, const size_t* top_k=NULL) const;
 
-    // Returns a list of suggestions for auto-completion. May be limited to the top k matches.
-    std::vector<std::string> suggest(const std::string& keyword_prefix, const unsigned int* top_k=NULL) const;
+    // Returns a list of suggestions for auto-completion.
+    // Suggestions have a prefix edit distance of at most delta.
+    // May be limited to the top k matches.
+    std::vector<std::string> suggest(
+            const std::string& keyword_prefix,
+            const unsigned int* delta=NULL,
+            const unsigned int* top_k=NULL) const;
 
     static std::vector<Entry> intersection(const std::vector<Entry>& list1, const std::vector<Entry>& list2);
     static std::vector<Entry> andish_union(const std::vector<Entry>& list1, const std::vector<Entry>& list2);
+
+    // Returns a vector of elements in the union of all input lists and
+    // a counter indicating the number of duplicates. Expects the input
+    // lists to be sorted.
+    static std::vector<std::pair<size_t, size_t>> union_with_counter(
+            const std::vector<const std::vector<size_t>* >& lists);
 
     // Bring the search result into different formats.
     std::vector<std::string> format_search_result(const std::vector<Entry>& result) const;
@@ -85,7 +96,7 @@ private:
     std::vector<std::pair<std::string, float>> keywords_;
     // A index from q-grams of keywords to keywords. Used for error-tolerant prefix search to suggest input.
     typedef std::string QGram;
-    typedef unsigned int QGramEntry;
+    typedef size_t QGramEntry;
     std::unordered_map<QGram, std::vector<QGramEntry>> keyword_index_;
 
     // tf.idf related stuff
@@ -95,6 +106,7 @@ private:
     static const std::locale LOCALE;
     static const std::string DIMDI_ICD_URL_prefix;
     static const unsigned int Q_GRAM_LENGTH;
+    static const char Q_GRAM_PADDING_CHAR;
 
     // Computes the bm25 weights of each entry.
     void compute_ranking_scores();
@@ -104,8 +116,11 @@ private:
     void compute_keyword_index(unsigned int q);
 
     FRIEND_TEST(InvertedIndexTest, parse_ICD_from_HTML);
+    FRIEND_TEST(InvertedIndexTest, suggest);
     FRIEND_TEST(InvertedIndexTest, compute_keyword_importances);
     FRIEND_TEST(InvertedIndexTest, compute_keyword_index);
+
+    // TODO(Jonas): The indexes may be stored compressed, if space becomes an issue.
 };
 
 
