@@ -58,7 +58,12 @@ function search(query) {
     console.log(data)
     
     data = $.map(data, function(entry) {
-      return "<div class=\"result_li\"><a href=\"" + entry.url + "\" target=\"_blank\">" + entry.t + "</a></div>";
+      var li = "<li class=\"result_li\">" +
+               "<a href=\"" + entry.url + "\" target=\"_blank\">" + 
+               "<span class=\"li_title\">" + entry.title + "</span><br>" + 
+               "<span class=\"li_content\">" + entry.content + "</span>" +
+               "</a></li>";
+      return li;
     }); 
     var html = "";
     $.each(data, function(index, value) {
@@ -72,7 +77,7 @@ function search(query) {
 }
 
 function show_result(text) {
-    $("#search_results").html(text);
+    $("#search_list").html(text);
     $("#search_results").show();
 }
 

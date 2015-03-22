@@ -83,7 +83,7 @@ public:
 
     // Bring the search result into different formats.
     std::vector<std::string> format_search_result(const std::vector<Entry>& result) const;
-    std::vector<std::string> format_search_result_title_and_URL_JSON(const std::vector<Entry>& results) const;
+    std::vector<std::string> format_search_result_items(const std::vector<Entry>& results) const;
     std::string format_id(const ICDcode& icd_code) const;
 
 private:

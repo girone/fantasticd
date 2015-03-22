@@ -1,0 +1,27 @@
+.highlight_search_kw {
+  background-color: #000;
+  color: #fff;
+}
+
+a {
+  text-decoration: none;
+  color: #000;
+}
+
+ul {
+  list-style-type: none;
+}
+
+.result_li {
+  padding-bottom: 8px;
+}
+
+.result_li:hover {
+  background-color: #eeeeff;
+}
+
+.li_title {
+  font-weight: bold;
+}
+
+

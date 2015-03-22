@@ -177,3 +177,8 @@ TEST_F(InvertedIndexTest, union_with_counter)
             make_pair(7, 1)
     ));
 }
+
+TEST_F(InvertedIndexTest, search)
+{
+    // TODO(Jonas): Adds tests for the search functionality "/?q=...".
+}

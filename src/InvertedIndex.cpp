@@ -205,6 +205,8 @@ const
     inverted_lists.reserve(keywords.size());
     for (const string& keyword: keywords)
     {
+        // TODO(Jonas): For each keyword, get the document lists of its synonyms
+        // and use the union of the lists as input to the intersection.
         auto it = index_.find(StringUtil::u_tolower(keyword));
         if (it != index_.cend())
         {
@@ -347,20 +349,25 @@ const
 }
 
 std::vector<std::string>
-InvertedIndex::format_search_result_title_and_URL_JSON(const std::vector<Entry>& results)
+InvertedIndex::format_search_result_items(const std::vector<Entry>& results)
 const
 {
-    std::vector<std::string> titles_and_URLs;
-    titles_and_URLs.reserve(results.size());
+    std::vector<std::string> items;
+    items.reserve(results.size());
     for (const auto& entry: results)
     {
         const std::string& document = documents_[entry.document_id];
         std::string id = format_id(icd_codes_[entry.code_index]);
         std::string URL = DIMDI_ICD_URL_prefix + document + "#" + id;
         std::string title = id + " [placeholder title]";
-        titles_and_URLs.emplace_back("{\"t\":\"" + title + "\",\"url\":\"" + URL + "\"}");
+        std::string content = "Here comes the content of the document, with <span class=\\\"highlight_search_result\\\">highlighted keywords</span> and more text.";
+        items.emplace_back("{"
+                "\"title\":\"" + title + "\","
+                "\"url\":\"" + URL + "\","
+                "\"content\":\"" + content + "\""
+        "}");
     }
-    return titles_and_URLs;
+    return items;
 }
 
 void InvertedIndex::compute_ranking_scores()

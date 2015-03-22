@@ -197,7 +197,7 @@ std::string SearchServer::compute_autocomplete_response(const std::string& input
 std::string SearchServer::compute_search_response(const std::string& input) const
 {
     std::vector<std::string> keywords = StringUtil::split_string(StringUtil::tolower(input), ' ');
-    std::vector<std::string> titles_and_URLs = ii_.format_search_result_title_and_URL_JSON(
+    std::vector<std::string> titles_and_URLs = ii_.format_search_result_items(
             ii_.search(keywords)
     );
     std::string json = "[" + StringUtil::join(",", titles_and_URLs) + "]";
