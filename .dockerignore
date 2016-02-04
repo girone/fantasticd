@@ -1,0 +1,9 @@
+# Ignore all content, otherwise it will be sent to the docker-daemon before
+# building the docker image.
+*
+
+# The following are exceptions (i.e. files which are needed by the image).
+!ICD.ii
+!src/searchServerMain
+!www/
+
