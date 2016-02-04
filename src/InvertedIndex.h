@@ -7,6 +7,19 @@
 #include <utility>
 #include <vector>
 
+/*
+ * Forward declarations.
+ */
+namespace boost {
+namespace serialization {
+class access;
+}
+}
+
+
+/*
+ * Helper functions.
+ */
 
 struct PairHash
 {
@@ -25,13 +38,15 @@ auto lexicographycally = [](const KW& a, const KW& b) {
                                         b.first.begin(), b.first.end());
 };
 
-
 // A by-importance comparator.
 auto by_importance = [](const KW& a, const KW& b) {
     return a.second > b.second;
 };
 
 
+/**
+ * An inverted index for the ICD.
+ */
 class InvertedIndex
 {
 public:
@@ -53,6 +68,10 @@ public:
         DocumentID document_id;
         ICDcodeIndex code_index;
         float score;
+
+        // Serialization.
+        template<class Archive>
+        void serialize(Archive& ar, unsigned int version);
     };
 
     void create_from_ICD_HTML(const std::string& directory);
@@ -115,6 +134,16 @@ private:
     // Computes the index over keywords.
     void compute_keyword_index(unsigned int q);
 
+    /*
+     * Serialization related functionality.
+     */
+    friend class boost::serialization::access;
+    template<class Archive>
+    void serialize(Archive& ar, const unsigned int version);
+
+    /*
+     * Friend tests.
+     */
     FRIEND_TEST(InvertedIndexTest, parse_ICD_from_HTML);
     FRIEND_TEST(InvertedIndexTest, suggest);
     FRIEND_TEST(InvertedIndexTest, compute_keyword_importances);

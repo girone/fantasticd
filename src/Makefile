@@ -1,4 +1,4 @@
-BOOST_STUFF = -lboost_system -lboost_filesystem -lboost_locale
+BOOST_STUFF = -lboost_system -lboost_filesystem -lboost_locale -lboost_serialization
 CXX = g++ -g -O3 -Wall -std=c++0x
 MAIN_BINARIES = $(basename $(wildcard *Main.cpp))
 TEST_BINARIES = $(basename $(wildcard ../test/*Test.cpp))

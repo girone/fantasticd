@@ -6,7 +6,13 @@
  */
 #include "./InvertedIndex.h"
 
+#include <boost/archive/archive_exception.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/serialization/vector.hpp>
+// Available from boost version 1.56:
+//#include <boost/serialization/unordered_map.hpp>
 
 #include <algorithm>
 #include <cassert>
@@ -19,6 +25,7 @@
 
 #include "./EditDistance.h"
 #include "./StringUtil.h"
+#include "./UnorderedMapSerializationWorkaround.h"
 
 using std::string;
 using std::wstring;
@@ -38,6 +45,16 @@ const std::string InvertedIndex::DIMDI_ICD_URL_prefix =
 
 const unsigned int InvertedIndex::Q_GRAM_LENGTH = 3;
 const char InvertedIndex::Q_GRAM_PADDING_CHAR = '$';
+
+
+template<class Archive>
+void InvertedIndex::Entry::serialize(Archive& ar, unsigned int version)
+{
+    ar & document_id;
+    ar & code_index;
+    ar & score;
+}
+
 
 void InvertedIndex::create_from_ICD_HTML(const string& directory)
 {
@@ -368,6 +385,27 @@ const
         "}");
     }
     return items;
+}
+
+/*
+ * Serialization related functionality.
+ */
+
+template<class Archive>
+void InvertedIndex::serialize(Archive& ar, const unsigned int version)
+{
+    // ar & index_;
+    serializeUnorderedMap(ar, index_);
+    ar & documents_;
+    ar & icd_codes_;
+    // ar & code_to_code_index_;
+    serializeUnorderedMap(ar, code_to_code_index_);
+    ar & keywords_;
+    // ar & keyword_index_;
+    serializeUnorderedMap(ar, keyword_index_);
+    // ar & number_of_words_;
+    serializeUnorderedMap(ar, number_of_words_);
+    ar & sum_of_document_lengths_;
 }
 
 void InvertedIndex::compute_ranking_scores()
