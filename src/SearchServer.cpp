@@ -18,12 +18,12 @@ using boost::asio::ip::tcp;
 // Turns exception handling in the run loop off. Useful for debugging.
 // #define NO_EXCEPTIONS
 
-SearchServer::SearchServer(const unsigned int port) :
+SearchServer::SearchServer(const unsigned int port, const InvertedIndex& ii) :
     port_(port),
     io_service_(),
-    acceptor_(io_service_, tcp::endpoint(tcp::v4(), port_))
+    acceptor_(io_service_, tcp::endpoint(tcp::v4(), port_)),
+    ii_(ii)
 {
-    ii_.create_from_ICD_HTML("icd/html/");
 }
 
 void SearchServer::run()

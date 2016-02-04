@@ -9,7 +9,7 @@ using boost::asio::ip::tcp;
 class SearchServer
 {
 public:
-    SearchServer(const unsigned int port);
+    SearchServer(const unsigned int port, const InvertedIndex& ii);
     void run();
 
     static std::string format_response_header(const std::string& content_type, const std::string& content);

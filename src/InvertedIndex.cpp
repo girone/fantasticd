@@ -408,6 +408,32 @@ void InvertedIndex::serialize(Archive& ar, const unsigned int version)
     ar & sum_of_document_lengths_;
 }
 
+void InvertedIndex::write(const std::string& indexFile) const
+{
+    std::ofstream ofs(indexFile);
+    if (not ofs.is_open())
+    {
+        std::cerr << "Could not open empty file '" << indexFile
+                  << "' for writing" << std::endl;
+    }
+
+    boost::archive::binary_oarchive ar(ofs);
+    ar << *this;
+}
+
+void InvertedIndex::load(const std::string& indexFile)
+{
+    std::ifstream ifs(indexFile);
+    if (not ifs.is_open())
+    {
+        std::cerr << "Could not find index file '" << indexFile << "'"
+                  << std::endl;
+    }
+
+    boost::archive::binary_iarchive ar(ifs);
+    ar >> *this;
+}
+
 void InvertedIndex::compute_ranking_scores()
 {
     const float k = 1.75;

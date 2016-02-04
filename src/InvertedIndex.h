@@ -105,6 +105,11 @@ public:
     std::vector<std::string> format_search_result_items(const std::vector<Entry>& results) const;
     std::string format_id(const ICDcode& icd_code) const;
 
+    // Write this index serialized to a file.
+    void write(const std::string& outfile) const;
+    // Load this index from a file with a serialized index.
+    void load(const std::string& infile);
+
 private:
     std::unordered_map<std::string, std::vector<Entry>> index_;
     std::vector<std::string> documents_;
